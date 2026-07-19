@@ -100,6 +100,11 @@
     width:300px; margin-left:-150px;
     transition: transform 0.8s cubic-bezier(.4,0,.2,1), opacity .5s ease;
     cursor:pointer;
+    /* Restrict the clickable area to the round barrel itself (radius 140 of a
+       300x300 box) rather than its full square bounding box, so an
+       overlapping neighboring slot's corners can't steal a click. */
+    clip-path: circle(47% at 50% 50%);
+    -webkit-clip-path: circle(47% at 50% 50%);
   }
   .barrel-slot.is-center{cursor:default;}
   .barrel-slot .barrel-svg{width:100%;display:block;}
@@ -427,9 +432,27 @@
       <span id="durTime">0:00</span>
     </div>
 
-    <iframe id="scPlayer"
-      title="Barrel of Voices audio (SoundCloud)"
+    <iframe id="scPlayer-2021"
+      title="2021 Character Sampler audio (SoundCloud)"
+      src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmattingham-522145447%2Fcooper-character-demo-short&auto_play=false&show_artwork=false&visual=false&download=false&buying=false&sharing=false&show_comments=false&show_playcount=false&show_user=false&hide_related=true"
+      style="position:absolute;left:-9999px;top:-9999px;width:300px;height:166px;pointer-events:none;"
+      allow="autoplay"
+      tabindex="-1"
+      aria-hidden="true"
+      scrolling="no"
+      frameborder="no"></iframe>
+    <iframe id="scPlayer-2024"
+      title="2024 Character Sampler audio (SoundCloud)"
       src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmattingham-522145447%2Fcooper-mceuen-2024-sampler&auto_play=false&show_artwork=false&visual=false&download=false&buying=false&sharing=false&show_comments=false&show_playcount=false&show_user=false&hide_related=true"
+      style="position:absolute;left:-9999px;top:-9999px;width:300px;height:166px;pointer-events:none;"
+      allow="autoplay"
+      tabindex="-1"
+      aria-hidden="true"
+      scrolling="no"
+      frameborder="no"></iframe>
+    <iframe id="scPlayer-commercial"
+      title="Commercial Sampler audio (SoundCloud)"
+      src="https://w.soundcloud.com/player/?url=https%3A%2F%2Fsoundcloud.com%2Fmattingham-522145447%2Fcooper-mceuen-commercial&auto_play=false&show_artwork=false&visual=false&download=false&buying=false&sharing=false&show_comments=false&show_playcount=false&show_user=false&hide_related=true"
       style="position:absolute;left:-9999px;top:-9999px;width:300px;height:166px;pointer-events:none;"
       allow="autoplay"
       tabindex="-1"
@@ -520,26 +543,19 @@
     });
   }
 
-  function resetAllIcons(){
-    Object.keys(TRACKS).forEach(trackId => {
-      const { playIcon, pauseIcon, bungBtn, lidSpin } = getEls(trackId);
-      playIcon.style.display = 'block';
-      pauseIcon.style.display = 'none';
-      bungBtn.setAttribute('aria-pressed', 'false');
-    });
-  }
-
   function setLidSpin(trackId, progress){
     const { lidSpin } = getEls(trackId);
     lidSpin.style.transform = `rotate(${progress * 360 * SPIN_ROTATIONS}deg)`;
   }
 
-  // ---- SoundCloud widget (single shared iframe, track swapped via widget.load) ----
-  let widget = null;
-  let widgetReady = false;
-  let isPlaying = false;
+  // ---- SoundCloud widgets (one persistent iframe + widget per track,
+  // created once and never reloaded/recreated \u2014 reloading a widget's
+  // iframe src turned out to break its internal ready handshake) ----
+  const widgets = {};       // trackId -> SC.Widget instance
+  const widgetReady = {};   // trackId -> bool
+  const durations = {};     // trackId -> ms
+  const isPlayingMap = {};  // trackId -> bool
   let isDraggingSeek = false;
-  let durationMs = 0;
 
   function showNoSampleState(show){
     seek.disabled = show;
@@ -556,33 +572,99 @@
     seek.disabled = true;
   }
 
+  function bindWidgetEvents(trackId, w){
+    w.bind(SC.Widget.Events.READY, function(){
+      widgetReady[trackId] = true;
+      w.getDuration(function(d){
+        durations[trackId] = d;
+        if(trackId === centerId()){ seek.max = 100; durTime.textContent = fmt(d); }
+      });
+    });
+
+    w.bind(SC.Widget.Events.PLAY, function(){
+      isPlayingMap[trackId] = true;
+      const { playIcon, pauseIcon, bungBtn } = getEls(trackId);
+      playIcon.style.display = 'none';
+      pauseIcon.style.display = 'block';
+      bungBtn.setAttribute('aria-pressed', 'true');
+      w.getDuration(function(d){
+        durations[trackId] = d;
+        if(trackId === centerId()) durTime.textContent = fmt(d);
+      });
+    });
+
+    w.bind(SC.Widget.Events.PAUSE, function(){
+      isPlayingMap[trackId] = false;
+      const { playIcon, pauseIcon, bungBtn } = getEls(trackId);
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+      bungBtn.setAttribute('aria-pressed', 'false');
+      // rotation is left exactly where playback stopped
+    });
+
+    w.bind(SC.Widget.Events.FINISH, function(){
+      isPlayingMap[trackId] = false;
+      const { playIcon, pauseIcon, bungBtn } = getEls(trackId);
+      playIcon.style.display = 'block';
+      pauseIcon.style.display = 'none';
+      bungBtn.setAttribute('aria-pressed', 'false');
+    });
+
+    w.bind(SC.Widget.Events.PLAY_PROGRESS, function(data){
+      if(trackId !== centerId()) return; // only the centered track drives the shared seek bar
+      if(isDraggingSeek) return;
+      const progress = data.relativePosition;
+      seek.value = progress * 100;
+      curTime.textContent = fmt(data.currentPosition);
+      setLidSpin(trackId, progress);
+    });
+  }
+
   function goToCenterTrack(){
     const id = centerId();
     const track = TRACKS[id];
     captionTitle.textContent = track.title;
     captionBlurb.textContent = track.blurb;
-    resetAllIcons();
-    durationMs = 0;
-    seek.value = 0; curTime.textContent = '0:00';
+
+    // Pause whichever track was left playing, so only one plays at a time.
+    Object.keys(TRACKS).forEach(otherId => {
+      if(otherId !== id && isPlayingMap[otherId] && widgets[otherId]){
+        widgets[otherId].pause();
+      }
+    });
 
     if(!track.url){
-      if(widget && isPlaying) widget.pause();
       showNoSampleState(true);
+      seek.value = 0; curTime.textContent = '0:00'; durTime.textContent = '0:00';
+      setLidSpin(id, 0);
       return;
     }
     showNoSampleState(false);
-    if(widgetReady){
-      widget.load(track.url, {
-        auto_play: true,
-        show_artwork: false, visual: false, buying: false, sharing: false,
-        show_comments: false, show_playcount: false, show_user: false, hide_related: true
+
+    const w = widgets[id];
+    if(w && widgetReady[id]){
+      // Reflect this track's own current position rather than resetting to
+      // zero \u2014 its widget has been sitting there independently the whole time.
+      w.getPosition(function(pos){
+        const dur = durations[id] || 0;
+        seek.max = 100;
+        durTime.textContent = fmt(dur);
+        const progress = dur ? pos / dur : 0;
+        seek.value = progress * 100;
+        curTime.textContent = fmt(pos);
+        setLidSpin(id, progress);
       });
+    } else {
+      seek.value = 0; curTime.textContent = '0:00'; durTime.textContent = '0:00';
+      setLidSpin(id, 0);
     }
   }
 
   function togglePlay(){
-    if(!TRACKS[centerId()].url || !widgetReady) return;
-    if(isPlaying){ widget.pause(); } else { widget.play(); }
+    const id = centerId();
+    const track = TRACKS[id];
+    if(!track.url || !widgets[id] || !widgetReady[id]) return;
+    if(isPlayingMap[id]){ widgets[id].pause(); } else { widgets[id].play(); }
   }
 
   function rollTo(direction){
@@ -635,16 +717,18 @@
   });
 
   seek.addEventListener('input', () => {
-    if(!TRACKS[centerId()].url) return;
+    const id = centerId();
+    if(!TRACKS[id].url) return;
     isDraggingSeek = true;
     const progress = seek.value / 100;
-    curTime.textContent = fmt(progress * durationMs);
-    setLidSpin(centerId(), progress);
+    curTime.textContent = fmt(progress * (durations[id] || 0));
+    setLidSpin(id, progress);
   });
   seek.addEventListener('change', () => {
-    if(!TRACKS[centerId()].url || !widgetReady) return;
+    const id = centerId();
+    if(!TRACKS[id].url || !widgets[id] || !widgetReady[id]) return;
     const progress = seek.value / 100;
-    widget.seekTo(progress * durationMs);
+    widgets[id].seekTo(progress * (durations[id] || 0));
     isDraggingSeek = false;
   });
 
@@ -652,52 +736,19 @@
   window.addEventListener('resize', applyPositions);
 
   function initPlayer(){
-    const scIframe = document.getElementById('scPlayer');
     if(typeof SC === 'undefined' || !SC.Widget){ playerUnavailable(); return; }
-
-    try{ widget = SC.Widget(scIframe); } catch(err){ playerUnavailable(); return; }
-
-    widget.bind(SC.Widget.Events.READY, function(){
-      widgetReady = true;
-      widget.getDuration(function(d){
-        durationMs = d;
-        seek.max = 100;
-        durTime.textContent = fmt(durationMs);
-      });
-    });
-
-    widget.bind(SC.Widget.Events.PLAY, function(){
-      isPlaying = true;
-      const { playIcon, pauseIcon, bungBtn } = getEls(centerId());
-      playIcon.style.display = 'none';
-      pauseIcon.style.display = 'block';
-      bungBtn.setAttribute('aria-pressed', 'true');
-      widget.getDuration(function(d){ durationMs = d; durTime.textContent = fmt(durationMs); });
-    });
-
-    widget.bind(SC.Widget.Events.PAUSE, function(){
-      isPlaying = false;
-      const { playIcon, pauseIcon, bungBtn } = getEls(centerId());
-      playIcon.style.display = 'block';
-      pauseIcon.style.display = 'none';
-      bungBtn.setAttribute('aria-pressed', 'false');
-      // rotation is left exactly where playback stopped
-    });
-
-    widget.bind(SC.Widget.Events.FINISH, function(){
-      isPlaying = false;
-      const { playIcon, pauseIcon, bungBtn } = getEls(centerId());
-      playIcon.style.display = 'block';
-      pauseIcon.style.display = 'none';
-      bungBtn.setAttribute('aria-pressed', 'false');
-    });
-
-    widget.bind(SC.Widget.Events.PLAY_PROGRESS, function(data){
-      if(isDraggingSeek) return;
-      const progress = data.relativePosition;
-      seek.value = progress * 100;
-      curTime.textContent = fmt(data.currentPosition);
-      setLidSpin(centerId(), progress);
+    Object.keys(TRACKS).forEach(trackId => {
+      const track = TRACKS[trackId];
+      if(!track.url) return;
+      const iframeEl = document.getElementById('scPlayer-' + trackId);
+      if(!iframeEl) return;
+      try{
+        const w = SC.Widget(iframeEl);
+        widgets[trackId] = w;
+        bindWidgetEvents(trackId, w);
+      }catch(err){
+        // leave this one unavailable without breaking the others
+      }
     });
   }
 
@@ -709,7 +760,7 @@
   } else {
     scApiScript.addEventListener('load', initPlayer);
     scApiScript.addEventListener('error', playerUnavailable);
-    setTimeout(() => { if(!widgetReady) playerUnavailable(); }, 8000);
+    setTimeout(() => { if(Object.keys(widgets).length === 0) playerUnavailable(); }, 8000);
   }
 
   // ---- Contact form -> mailto ----
