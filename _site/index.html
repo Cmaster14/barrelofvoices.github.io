@@ -144,7 +144,7 @@
   .bung-btn .pause-bar{fill:var(--oak-dark);}
 
   @media (max-width:640px){
-    .barrel-carousel{height:230px;}
+    .barrel-carousel{height:240px;}
   }
 
   .player-caption{
@@ -559,9 +559,9 @@
   function getPOS(){
     const narrow = window.innerWidth < 640;
     return {
-      center: { x: 0, scale: 1, opacity: 1, z: 3 },
-      left:   { x: narrow ? -110 : -190, scale: narrow ? 0.45 : 0.55, opacity: 0.8, z: 1 },
-      right:  { x: narrow ?  110 :  190, scale: narrow ? 0.45 : 0.55, opacity: 0.8, z: 1 }
+      center: { x: 0, scale: narrow ? 0.7 : 1, opacity: 1, z: 3 },
+      left:   { x: narrow ? -100 : -190, scale: narrow ? 0.4 : 0.55, opacity: 0.8, z: 1 },
+      right:  { x: narrow ?  100 :  190, scale: narrow ? 0.4 : 0.55, opacity: 0.8, z: 1 }
     };
   }
 
