@@ -7,7 +7,7 @@ description: Voice acting samples for animation, games, narration, and commercia
 <section id="demos">
   <div class="wrap">
     <div class="section-head">
-      <span class="eyebrow">Samples on Tap</span>
+      <h2>Samples on Tap</h2>
       <div class="divider"></div>
     </div>
     <div class="demo-list">
