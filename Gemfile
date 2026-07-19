@@ -1,8 +1,10 @@
-# frozen_string_literal: true
-
 source "https://rubygems.org"
 
-# gem "rails"
-gem 'nokogiri'
-gem 'rack', '~> 2.2.4'
-gem 'rspec'
+gem "csv"
+gem "bigdecimal"
+gem "base64"
+gem "jekyll", "~> 4.3.4"
+gem "jekyll-seo-tag", "~> 2.5"
+gem "jekyll-github-metadata", "~> 2.13"
+gem "jekyll-theme-slate", "~> 0.2.0"
+gem "webrick", "~> 1.8"

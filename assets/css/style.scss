@@ -1,0 +1,155 @@
+---
+---
+
+:root {
+  color-scheme: dark;
+  --bg: #07111d;
+  --panel: #0f1c2d;
+  --panel-2: #15253b;
+  --text: #f2f4f7;
+  --muted: #b6c0ca;
+  --accent: #ff8a3d;
+  --accent-strong: #ff6b2c;
+  --border: rgba(255,255,255,0.12);
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  color: var(--text);
+  background: linear-gradient(135deg, var(--bg) 0%, #13253d 100%);
+}
+
+#header_wrap {
+  background: linear-gradient(135deg, #0b1320 0%, #1a2b45 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.inner {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2.5rem 1.5rem;
+}
+
+#main_content_wrap {
+  background: transparent;
+}
+
+#main_content {
+  padding: 2rem 0 3rem;
+}
+
+.hero,
+.card,
+.sample-card,
+.about-section,
+.contact-section {
+  background: rgba(15, 28, 45, 0.92);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.25);
+}
+
+.hero {
+  padding: 3rem;
+  margin-bottom: 1.5rem;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.3em;
+  font-size: 0.8rem;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+
+.hero h1 {
+  font-size: clamp(2rem, 3.2vw, 3rem);
+  margin: 0 0 1rem;
+  line-height: 1.15;
+}
+
+.hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.button {
+  display: inline-block;
+  padding: 0.8rem 1.2rem;
+  border-radius: 999px;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.button.primary {
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-strong) 100%);
+  color: white;
+}
+
+.button.secondary {
+  color: var(--text);
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--border);
+}
+
+.intro-grid,
+.sample-grid {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  margin-bottom: 1.5rem;
+}
+
+.card,
+.sample-card,
+.about-section,
+.contact-section {
+  padding: 1.25rem;
+}
+
+.sample-section,
+.about-section,
+.contact-section {
+  margin-top: 1.5rem;
+}
+
+.sample-card audio,
+.sample-card video {
+  width: 100%;
+  margin-top: 0.75rem;
+}
+
+.section-intro,
+.about-section p,
+.contact-section p,
+.contact-section li {
+  color: var(--muted);
+}
+
+ul {
+  padding-left: 1.2rem;
+}
+
+#footer_wrap {
+  background: #050910;
+  border-top: 1px solid var(--border);
+}
+
+#footer_wrap a,
+.contact-section a {
+  color: var(--accent);
+}
+
+@media (max-width: 700px) {
+  .hero {
+    padding: 1.5rem;
+  }
+
+  .inner {
+    padding: 1.5rem 1rem;
+  }
+}
